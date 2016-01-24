@@ -1,0 +1,4 @@
+#!/bin/sh
+avra -l $1.lst $1.asm
+mv $1.eep.hex $1.eep
+rm $1.cof $1.obj
