@@ -31,18 +31,18 @@
 	reti		;  PCINT1
 	reti		;  PCINT2
 	reti		;  WDT
-	rjmp	t2cmp	;  Timer2 COMPA
+	reti		;  Timer2 COMPA
 	reti		;  Timer2 COMPB
 	reti		;  Timer2 overflow
 	reti		;  Timer1 capture
-	rjmp	t1cmp	;  Timer1 COMPA
+	reti		;  Timer1 COMPA
 	reti		;  Timer1 COMPB
 	reti		;  Timer1 overflow
 	reti		;  Timer0 COMPA
 	reti		;  Timer0 COMPB
-	reti		;  Timer0 overflow
+	rjmp	t0ovf	;  Timer0 overflow
 	reti		;  SPI STC
-	rjmp	usartrx	;  USART/Rx complete
+	reti		;  USART/Rx complete
 	reti		;  USART/ Data register empty
 	reti		;  USART/Tx complete
 	reti		;  ADC
@@ -51,77 +51,20 @@
 	reti		;  TWI
 	reti		;  SPM_RDY
 ;
-;Timer2 cmp
-t2cmp:
+;Timer0 Overflow
+t0ovf:
 	in	itemp, SREG
 	push	itemp
 	adiw	YL,1
 	cpi	YH,high(tone*2+SAMPLES)
-	brne	t2cmp_end
+	brne 	t0ovf_end
 	ldi	YH,high(tone*2)
 	ldi	YL,low(tone*2)
-t2cmp_end:
+t0ovf_end:
 	ld	itemp,Y
-	lsr	itemp
 	out	OCR0A,itemp
-	ld	temp,Z
-	lsr	temp
-	add	itemp,temp
-	out	OCR0A,itemp
-	pop	itemp
+	pop 	itemp
 	out	SREG, itemp
-	reti
-;
-;Timer1 cmp
-t1cmp:
-	in	itemp, SREG
-	push	itemp
-	adiw	ZL,1
-	cpi	ZH,high(tone1*2+SAMPLES)
-	brne	t1cmp_end
-	ldi	ZH,high(tone1*2)
-	ldi	ZL,low(tone1*2)
-t1cmp_end:
-	ld	itemp,Y
-	lsr	itemp
-	out	OCR0A,itemp
-	ld	temp,Z
-	lsr	temp
-	add	itemp,temp
-	out	OCR0A,itemp
-	pop	itemp
-	out	SREG, itemp
-	reti
-;usart rx interrupt
-usartrx:
-	in	itemp, SREG
-	push	itemp
-	cli
-	lds	us_data, UDR0
-	st	X+, us_data
-Txa:
-	lds	itemp, UCSR0A
-	sbrs	itemp, UDRE0
-	rjmp	Txa
-	sts	UDR0,  us_data
-	cpi	us_data, 0x40 ;'@'
-	brne	usartend
-	ldi	XH, 0x01
-	ldi	XL, 0x00
-Txb:
-	lds	itemp, UCSR0A
-	sbrs	itemp, UDRE0
-	rjmp 	Txb
-	sts	UDR0, temp
-	ld	temp, X+
-	cpi	temp, 0x40 ;'@'
-	brne	Txb
-	ldi	XH, 0x01
-	ldi	XL, 0x00
-usartend:
-	pop	itemp
-	out	SREG, itemp
-	sei
 	reti
 ;
 ;reset routine
@@ -138,45 +81,20 @@ reset:
 	ldi	temp, 0b11110000
 	out	DDRD, temp
 ; set PORTD pull up
-	ldi	temp, 0b11110000
+	ldi	temp, 0b11111111
 	out	PORTD, temp
 ; set Timer0 8bit-FastPWM
-	ldi	temp, 0b10000010
+	ldi	temp, 0b10000011
 	out	TCCR0A, temp
 	ldi	temp, 0b00000001
-	out	TCCR0B,temp
-	ldi	temp, 0b00000111
-	sts	TIMSK0, temp
-; set Timer1 CTC 
-	ldi	temp, 0b00000000
-	sts	TCCR1A, temp
-	ldi	temp, 0b00001001
-	sts	TCCR1B, temp
-	ldi	temp, 0b00000111
-	sts	TIMSK1, temp
-; set Timer2 CTC
-	ldi	temp, 0b00000010
-	sts	TCCR2A, temp
+	out	TCCR0B, temp
 	ldi	temp, 0b00000001
-	sts	TCCR2B, temp
-	ldi	temp, 0b00000111
-	sts	TIMSK2, temp
+	sts	TIMSK0, temp
 ; set default tone
-	ldi	SPK, 0
 	ldi	YH,high(tone*2)
 	ldi	YL,low(tone*2)
-;
-;
-	ldi	temp,BRH
-	sts	UBRR0H,temp
-	ldi	temp,BRL
-	sts	UBRR0L,temp
-	ldi	temp,0b10011000
-	sts	UCSR0B,temp
-	ldi	temp,0b00000110
-	sts	UCSR0C,temp
-	ldi	XH, 0x01
-	ldi	XL, 0x00
+	ldi	temp,0xF0
+	out	OCR0A,temp
 	sei
 ;
 ;
@@ -218,7 +136,6 @@ tone:
 .db 0x38, 0x3b, 0x3e, 0x40, 0x43, 0x46, 0x49, 0x4c
 .db 0x4f, 0x51, 0x54, 0x57, 0x5a, 0x5d, 0x60, 0x63
 .db 0x67, 0x6a, 0x6d, 0x70, 0x73, 0x76, 0x79, 0x7c
-tone1:
 ;三角波
 .db 0x7f, 0x81, 0x83, 0x85, 0x87, 0x89, 0x8b, 0x8d
 .db 0x8f, 0x91, 0x93, 0x95, 0x97, 0x99, 0x9b, 0x9d
