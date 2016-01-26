@@ -1,21 +1,12 @@
 ;
 .include	"m88def.inc"
 ;register
-.def	NN0	=r16	;ノートナンバー0
-.def	TC0	=r17	;音色0
-.def	WV0	=r18	;波形値0
-;
-.def	NN1	=r19	;ノートナンバー1
-.def	TC1	=r20	;音色1
-.def	WV1	=r21	;波形値1
-;
-.def	SPK	=r22	;スピーカー出力値
-;
 .def	temp	=r23	;テンポラリレジスタ
 .def	itemp	=r24	;割り込み内テンポラリレジスタ
 .def	us_data	=r25	;USART送受信データ
 ;
 ;boudrate definition
+; 1200 8N1
 .equ	BRH	=0x4
 .equ	BRL	=0x11
 .equ	ACK	=0x1
@@ -31,11 +22,11 @@
 	reti		;  PCINT1
 	reti		;  PCINT2
 	reti		;  WDT
-	rjmp	t2cmp	;  Timer2 COMPA
+	reti		;  Timer2 COMPA
 	reti		;  Timer2 COMPB
 	reti		;  Timer2 overflow
 	reti		;  Timer1 capture
-	rjmp	t1cmp	;  Timer1 COMPA
+	reti		;  Timer1 COMPA
 	reti		;  Timer1 COMPB
 	reti		;  Timer1 overflow
 	reti		;  Timer0 COMPA
@@ -51,47 +42,6 @@
 	reti		;  TWI
 	reti		;  SPM_RDY
 ;
-;Timer2 cmp
-t2cmp:
-	in	itemp, SREG
-	push	itemp
-	adiw	YL,1
-	cpi	YH,high(tone*2+SAMPLES)
-	brne	t2cmp_end
-	ldi	YH,high(tone*2)
-	ldi	YL,low(tone*2)
-t2cmp_end:
-	ld	itemp,Y
-	lsr	itemp
-	out	OCR0A,itemp
-	ld	temp,Z
-	lsr	temp
-	add	itemp,temp
-	out	OCR0A,itemp
-	pop	itemp
-	out	SREG, itemp
-	reti
-;
-;Timer1 cmp
-t1cmp:
-	in	itemp, SREG
-	push	itemp
-	adiw	ZL,1
-	cpi	ZH,high(tone1*2+SAMPLES)
-	brne	t1cmp_end
-	ldi	ZH,high(tone1*2)
-	ldi	ZL,low(tone1*2)
-t1cmp_end:
-	ld	itemp,Y
-	lsr	itemp
-	out	OCR0A,itemp
-	ld	temp,Z
-	lsr	temp
-	add	itemp,temp
-	out	OCR0A,itemp
-	pop	itemp
-	out	SREG, itemp
-	reti
 ;usart rx interrupt
 usartrx:
 	in	itemp, SREG
@@ -138,33 +88,29 @@ reset:
 	ldi	temp, 0b11110000
 	out	DDRD, temp
 ; set PORTD pull up
-	ldi	temp, 0b11110000
+	ldi	temp, 0b11111111
 	out	PORTD, temp
 ; set Timer0 8bit-FastPWM
-	ldi	temp, 0b10000010
+	ldi	temp, 0b10000011
 	out	TCCR0A, temp
 	ldi	temp, 0b00000001
-	out	TCCR0B,temp
-	ldi	temp, 0b00000111
+	out	TCCR0B, temp
+	ldi	temp, 0b00000001
 	sts	TIMSK0, temp
-; set Timer1 CTC 
-	ldi	temp, 0b00000000
-	sts	TCCR1A, temp
-	ldi	temp, 0b00001001
-	sts	TCCR1B, temp
-	ldi	temp, 0b00000111
-	sts	TIMSK1, temp
 ; set Timer2 CTC
 	ldi	temp, 0b00000010
 	sts	TCCR2A, temp
 	ldi	temp, 0b00000001
 	sts	TCCR2B, temp
-	ldi	temp, 0b00000111
+	ldi	temp, 0b00000100
 	sts	TIMSK2, temp
 ; set default tone
 	ldi	SPK, 0
-	ldi	YH,high(tone*2)
-	ldi	YL,low(tone*2)
+	ldi	ZH,high(tone1*2)
+	ldi	ZL,low(tone1*2)
+; set test tone
+	ldi	temp,0xFF
+	sts	OCR2A,temp
 ;
 ;
 	ldi	temp,BRH
