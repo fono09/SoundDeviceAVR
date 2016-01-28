@@ -1,6 +1,6 @@
 #define F_CPU 20000000
 #define BAUD 1200
-#define MY_UBRR F_CPU/16/BAUD-1
+#define SETUBRR (F_CPU/16/BAUD-1)
 #define SAMPLES 256
 
 #include<avr/io.h>
@@ -8,7 +8,9 @@
 #include<avr/interrupt.h>
 #include<avr/pgmspace.h>
 
-PROGMEM const unsigned int tone[SAMPLES] = {
+unsigned char* p_tone0;
+unsigned char* p_tone1;
+PROGMEM const unsigned char tone[SAMPLES] = {
  0x80, 0x83, 0x86, 0x89, 0x8c, 0x8f, 0x92, 0x95,
  0x98, 0x9c, 0x9f, 0xa2, 0xa5, 0xa8, 0xab, 0xae,
  0xb0, 0xb3, 0xb6, 0xb9, 0xbc, 0xbf, 0xc1, 0xc4,
@@ -44,19 +46,15 @@ PROGMEM const unsigned int tone[SAMPLES] = {
 };
 
 
+unsigned char buffer[10];
+unsigned char* p_writeBuffer;
+unsigned char* p_readBuffer;
 
-unsigned int* p_tone0;
-unsigned int* p_tone1;
 ISR(TIMER0_OVF_vect){
-	cli();
-	unsigned int a;
-	unsigned int b;
-	a = *p_tone0;
-	a = a >> 1; 
-	b = *p_tone1;
-	b = b >> 1;
-	OCR0A = a + b;
-	sei();
+	unsigned char a = *p_tone0;
+	unsigned char b = *p_tone1;
+	OCR0A = ((a>>1) + (b>>1));
+//	OCR0A = a;
 };
 
 ISR(TIMER1_COMPA_vect){
@@ -67,16 +65,25 @@ ISR(TIMER1_COMPA_vect){
 }
 
 ISR(TIMER2_COMPA_vect){
-	p_tone1++;
-	if(p_tone1 - tone > SAMPLES){
-		p_tone1 = tone;
-	}
 }
 
-unsigned int main(void){
+ISR(USART_RX_vect){
+	cli();
+	unsigned char us_data = UDR0;
+	if(us_data = 0b111111){
+		
+	}else if(us_data = 0b00000000){
+			
+	}
+	sei();
+}
+
+unsigned char main(void){
+
 	DDRB = 0xFF;
 	DDRD = 0xF0;
 	PORTD = 0xFF;
+
 	TCCR0A = 0b10000011;
 	TCCR0B = 0b00000001;
 	TIMSK0 = 0b00000001;
@@ -84,18 +91,36 @@ unsigned int main(void){
 	TCCR1A = 0b00000000;
 	TCCR1B = 0b00001001;
 	TIMSK1 = 0b00000010;
-	TIMSK1 = 0b00000000;
 
 	TCCR2A = 0b00000010;
 	TCCR2B = 0b00000001;
 	TIMSK2 = 0b00000010;
 
+	UBRR0 = (unsigned int)SETUBRR;
+	UCSR0B = 0b10111000;
+	UCSR0C = 0b00000110;
+
 	p_tone0 = tone;
 	p_tone1 = tone;
 
-	OCR1A = 0x016A;
-	OCR2A = 0xB0;
+	OCR1A = 0x006C;
+	OCR2A = 177;
+
 	sei();
 
-	while(1){};
+	unsigned char ocv3 = 177;
+	unsigned char timer3 = 0;
+	while(1){	
+		if(timer3 = 255){
+			timer3 = 0;
+		}else if(timer3 == ocv3){
+			p_tone1++;
+			if(p_tone1 - tone > SAMPLES){
+				p_tone1 = tone;
+			}
+			timer3 = 0;
+		}else{
+			timer3++;
+		}
+	};
 };
