@@ -2,6 +2,7 @@
 #define BAUD 1200
 #define SETUBRR (F_CPU/16/BAUD-1)
 #define SAMPLES 128
+#define TUNES 37
 
 #include<avr/io.h>
 #include<util/delay.h>
@@ -14,7 +15,7 @@ PROGMEM const unsigned char tone[SAMPLES] = {
 };
 // Tune A2 - 
 PROGMEM const unsigned char tune[] = {
-
+	177,167,158,149,140,133,125,118,111,105,99,94,88,83,79,74,70,66,62,59,55,52,49,47,44,41,39,37,35,33,31,29,27,26,24,23,22
 };
 
 
